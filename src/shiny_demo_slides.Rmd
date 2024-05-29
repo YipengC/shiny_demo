@@ -1,0 +1,184 @@
+---
+title: "Shiny Demo"
+output: ioslides_presentation
+---
+
+
+## What is Shiny?
+- Framework for developing web apps in R
+- Does not require knowledge of traditional web technologies (HTML, CSS, JavaScript)
+- Automatically calculates which parts of the app to update when inputs change (reactive programming)
+
+## Contents
+- Basic app structure
+- UI components: inputs, outputs and layouts
+- Reactive programming
+- Reactive expressions
+- The reactive graph
+- Modules
+- eventReactive and observeEvent
+
+## Setup
+- To follow along with this demo, you can clone or download the GitHub repository at:
+- https://github.com/YipengC/shiny_demo
+
+## Default example app
+- `src/01_default` contains the default app created when a Shiny app project is 
+initialised in RStudio
+- This can be started by opening `app.R` and clicking `Run App` in RStudio,
+- or calling `shiny::runApp("src/01_default")` from the console
+- You can also run the app by calling `source()` on the `app.R` file if you're
+running from outside of RStudio
+- `shiny::runApp("src/01_default", display.mode = "showcase")` shows the corresponding
+code while the app is running
+
+## Shiny app structure
+```{r, eval=FALSE}
+library(shiny)
+
+ui <- fluidPage(
+
+)
+
+server <- function(input, output, session) {
+
+}
+
+# Run the application 
+shinyApp(ui = ui, server = server)
+
+```
+- ui: defines the components (layouts, inputs, outputs) and how they are arranged
+- server: specifies how these components and data interact
+
+# UI components
+
+## Inputs
+- Defined in the ui using a function call (ending with `Input()`)
+- Parameters include the `inputId`, `label` and other input-specific variables
+- e.g.
+```{r, eval=FALSE}
+sliderInput(inputId = "bins",
+            label = "Number of bins:",
+            min = 1,
+            max = 50,
+            value = 30)
+```
+- Some example inputs are shown in `src/input_examples`
+
+## Outputs
+- Creates a placeholder to be filled by the server function
+- Defined in ui function using a function (ending with `Output()`)
+- Parameters include the `outputId` and other output-specific variables
+- e.g.
+```{r eval=FALSE}
+plotOutput(outputId = "distPlot")
+```
+- Some example outputs are shown in `src/output_examples`
+
+## Layouts
+- Used to define the arrangement of inputs and outputs in the UI
+- Defined by a hierarchy of function calls in the ui function
+```{r, eval=FALSE}
+ui <- fluidPage(
+
+    # Application title
+    titlePanel(),
+    sidebarLayout(
+        sidebarPanel(
+
+        ),
+        mainPanel(
+
+        )
+    )
+)
+```
+
+# Reactive programming
+
+## What is reactive programming?
+- A programming paradigm
+- Specify a graph of dependencies
+- Outputs are automatically computed when an input is changed
+
+## The server function: input
+```{r, eval=FALSE}
+server <- function(input, output, session) {}
+```
+- `input`: a named list of input data sent from the browser. The names correspond 
+to the inputIds specified in the ui function
+- `input` is read-only
+- `input` can only be read within a *reactive context*
+
+## The server function: output
+```{r, eval=FALSE}
+server <- function(input, output, session) {}
+```
+- `output`: a named list of outputs specified in the ui function. The names correspond
+to the outputIds.
+- Used to send output to the UI
+- outputs are used with a `render` function, which creates a *reactive context* 
+which keeps track of which inputs it uses
+- The `render` function also converts the result into a format the browser can display
+
+## A closer look at using an output
+```{r, eval=FALSE}
+output$distPlot <- renderPlot({
+    # generate bins based on input$bins from ui.R
+    x    <- faithful[, 2]
+    bins <- seq(min(x), max(x), length.out = input$bins + 1)
+
+    # draw the histogram with the specified number of bins
+    hist(x, breaks = bins, col = 'darkgray', border = 'white',
+         xlab = 'Waiting time to next eruption (in mins)',
+         main = 'Histogram of waiting times')
+})
+```
+- The code within the `{}` is not executed immediately when `renderPlot` is called.
+Instead it is executed whenever the output `distPlot` needs to update.
+- With the `renderPlot` function, we specify how the output `distPlot` should be 
+computed, whenever its dependencies (input$bins) change. Note: this affects execution order
+
+
+# Example app
+
+## London Marathon winner dataset
+- For the remaining examples, we'll use the TidyTuesday London Marathon winners dataset
+```{r}
+df <- readRDS("../data/marathon_winners.rds")
+head(df)
+```
+
+## 03_basic_app
+- Plot a histogram of times given a filter for the years and category
+
+## 04_two_plots
+- Create a second plot showing time vs. year
+
+## 05_two_plots_filtered_data_reactive
+- Currently we are performing the filter in each of the `render` functions
+- This can be made more efficient by using a *reactive expression*
+- Reactive expressions are another way of creating a *reactive context*
+
+## The reactive graph
+- Now that we know about inputs, outputs and reactive expressions, we'll look at
+how the reactive graph determines how dependencies are executed and resolved.
+- Some terminology
+  - producers and consumers
+  - inputs, reactive expressions and outputs
+- https://mastering-shiny.org/reactive-graph.html
+- Shiny reactlog
+
+## Modules 06/07
+- Manage complexity
+- Abstract out reusable components
+- Modules can be tested in isolation
+- Namespaces/managing IDs
+
+## 08_update_on_button_click
+- Used for more traditional event handling e.g. on clicking a button
+- `eventReactive(eventExpr, handlerExpr)`: for calculating values - returns a reactive
+- `observeEvent(eventExpr, handlerExpr)`: for performing actions with side effects - does not return a reactive
+- These functions will execute `handlerExpr` only when `eventExpr` changes and does not 
+introduce a dependency on any other reactives in `handlerExpr` (unlike `reactive()`)
